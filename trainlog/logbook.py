@@ -80,6 +80,9 @@ def accept_exercise(date_str, exercise_id):
         upsert_set(date_str, exercise_id, row["set_index"], row["is_backoff"],
                    row["target_reps"], row["target_load"], True)
         n += 1
+    if n:
+        from trainlog.loading_engine import process_exercise_session
+        process_exercise_session(date_str, exercise_id)
     return n
 
 

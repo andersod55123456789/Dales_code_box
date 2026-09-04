@@ -52,7 +52,11 @@ document.querySelectorAll('.ex').forEach(exEl => {
     if (cb) {
       cb.addEventListener('change', async () => {
         try {
-          await sendSet(exEl, rowEl, cb.checked);
+          const result = await sendSet(exEl, rowEl, cb.checked);
+          if (result.exercise_complete) {
+            const prompt = exEl.querySelector('.rir-prompt');
+            if (prompt) prompt.hidden = false;
+          }
         } catch (e) {
           cb.checked = !cb.checked;
         }
@@ -92,7 +96,17 @@ document.querySelectorAll('.ex').forEach(exEl => {
 async function exDone(id) {
   try {
     await post('/api/exercise/done', {date: DAY_DATE, exercise_id: id});
-    location.reload();
+    const prompt = document.querySelector('[data-ex="' + id + '"] .rir-prompt');
+    if (prompt) prompt.hidden = false; else location.reload();
+  } catch (e) {}
+}
+
+async function sendFeedback(id, rir) {
+  try {
+    const d = await post('/api/exercise/feedback', {date: DAY_DATE, exercise_id: id, rir_feedback: rir});
+    toast(d.reason || 'Feedback saved');
+    const prompt = document.querySelector('[data-ex="' + id + '"] .rir-prompt');
+    if (prompt) prompt.hidden = true;
   } catch (e) {}
 }
 

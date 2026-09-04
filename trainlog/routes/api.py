@@ -120,6 +120,25 @@ def exercise_done():
     return jsonify({"ok": True, "sets_written": logbook.accept_exercise(date, eid)})
 
 
+@bp.post("/exercise/feedback")
+def exercise_feedback():
+    b = request.get_json(silent=True) or {}
+    try:
+        date = resolve_date(b.get("date"))
+        eid, rir = b["exercise_id"], b["rir_feedback"]
+    except (KeyError, TypeError, ValueError):
+        return err("date, exercise_id, rir_feedback required")
+    if rir not in ("EASY", "TARGET", "HARD", "FAILURE"):
+        return err("invalid rir_feedback")
+    d = logbook.get_or_create_day_log(date)
+    execute("INSERT INTO exercise_feedback (day_log_id,exercise_id,rir_feedback,created_at) VALUES (?,?,?,?) "
+            "ON CONFLICT(day_log_id,exercise_id) DO UPDATE SET rir_feedback=excluded.rir_feedback,created_at=excluded.created_at",
+            (d["id"], eid, rir, now()))
+    from trainlog.loading_engine import process_exercise_session
+    result = process_exercise_session(date, eid)
+    return jsonify({"ok": True, **result})
+
+
 @bp.post("/anchor")
 def post_anchor():
     b = request.get_json(silent=True) or {}

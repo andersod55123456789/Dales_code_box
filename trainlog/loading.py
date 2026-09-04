@@ -1,212 +1,98 @@
-"""Loading engine logic - pure functions without database or Flask"""
+"""Pure Phase 2 loading rules (no Flask or database access)."""
+import copy
+import json
 
-RIR_MAP = {'EASY': 4.0, 'TARGET': 2.5, 'HARD': 1.0, 'FAILURE': 0.0}
-
+RIR_MAP = {"EASY": 4.0, "TARGET": 2.5, "HARD": 1.0, "FAILURE": 0.0}
 
 def mesocycle_phase(counter):
-    """Determine the current mesocycle phase based on counter value.
-    
-    Args:
-        counter: int - number of sessions completed for this exercise (0-11)
-
-    Returns:
-        str: Phase name ('BASELINE', 'PROGRESSING', 'CONTINUING', 'HARDEST', 'MESOCYCLE_DELOAD')
-    """
-    if 0 <= counter <= 2:
-        return 'BASELINE'
-    elif 3 <= counter <= 6:
-        return 'PROGRESSING'
-    elif 7 <= counter <= 9:
-        return 'CONTINUING'
-    elif counter == 10:
-        return 'HARDEST'
-    else:  # counter == 11
-        return 'MESOCYCLE_DELOAD'
-
+    counter %= 12
+    if counter <= 2: return "BASELINE"
+    if counter <= 6: return "PROGRESSING"
+    if counter <= 9: return "CONTINUING"
+    if counter == 10: return "HARDEST"
+    return "MESOCYCLE_DELOAD"
 
 def step1(actual_reps, rep_range, rir_feedback, pec_affected=False):
-    """Determine the first-step action based on reps and feedback.
-    
-    Args:
-        actual_reps: list of int - actual repetitions for each set
-        rep_range: tuple of (lo, hi) - target repetition range
-        rir_feedback: str - RIR feedback ('EASY', 'TARGET', 'HARD', 'FAILURE')
-        pec_affected: bool - whether pec status indicates affected muscles
-        
-    Returns:
-        str: Action ('INCREASE_LOAD', 'DECREASE_LOAD', or 'HOLD_LOAD')
-    """
-    rep_range_lo, rep_range_hi = rep_range
-    
-    # Check if all reps are at or above the high end of the range
-    all_at_ceiling = all(r >= rep_range_hi for r in actual_reps)
-    
-    # Determine increase_band based on pec_affected flag
-    if pec_affected:
-        increase_band = ('EASY', 'TARGET')  # EASY to TARGET when pec affected
-    else:
-        increase_band = ('TARGET', 'HARD')  # TARGET to HARD normally
-    
-    if all_at_ceiling and rir_feedback in increase_band:
-        return 'INCREASE_LOAD'
-    elif any(r < rep_range_lo for r in actual_reps) and rir_feedback == 'FAILURE':
-        return 'DECREASE_LOAD'
-    else:
-        return 'HOLD_LOAD'
-
+    lo, hi = rep_range
+    band = ("EASY", "TARGET") if pec_affected else ("TARGET", "HARD")
+    if actual_reps and all(rep >= hi for rep in actual_reps) and rir_feedback in band:
+        return "INCREASE_LOAD"
+    if pec_affected and rir_feedback == "FAILURE":
+        return "DECREASE_LOAD"
+    if any(rep < lo for rep in actual_reps) and rir_feedback == "FAILURE":
+        return "DECREASE_LOAD"
+    return "HOLD_LOAD"
 
 def step2(recent_sessions, session, rep_range, phase, pec_affected=False):
-    """Determine the second-step action based on recent performance trends.
-    
-    Args:
-        recent_sessions: list of dicts - last 3 sessions with actual_reps and rir_feedback 
-        session: dict - current session's actual_reps and rir_feedback
-        rep_range: tuple of (lo, hi) - target repetition range  
-        phase: str - current mesocycle phase ('BASELINE', 'PROGRESSING', etc.)
-        pec_affected: bool - whether pec status indicates affected muscles
-        
-    Returns:
-        str or None: Action ('INCREASE_LOAD', 'DECREASE_LOAD') or None if no action
-    """
-    # Disable step2 in BASELINE phase
-    if phase == 'BASELINE':
-        return None
-    
-    # Extract rep data for recent sessions (assuming session is last in list)
-    if not recent_sessions:
-        return None
-    
-    # Early increase rules
-    if len(recent_sessions) >= 2:
-        # Last two sessions were all EASY and minimum reps meet midpoint target
-        recent_two = recent_sessions[-2:]
-        
-        # Check if the last 2 are 'EASY'
-        if all(s['rir_feedback'] == 'EASY' for s in recent_two):
-            
-            # Calculate midpoint of rep range
-            lo, hi = rep_range
-            midpoint = (lo + hi) / 2
-            
-            # Check if min reps in each session >= midpoint
-            min_reps_all = all(min(s['actual_reps']) >= midpoint for s in recent_two)
-            if min_reps_all:
-                return 'INCREASE_LOAD'
-    
-    # Early decrease rules
-    if len(recent_sessions) >= 1:
-        # ONE FAILURE this session is enough to decrease (when pec_affected)  
-        if pec_affected and session['rir_feedback'] == 'FAILURE':
-            return 'DECREASE_LOAD'
-        
-        # TWO consecutive HARD sessions decrease when pec_affected
-        if pec_affected and len(recent_sessions) >= 2:
-            recent_two = recent_sessions[-2:]
-            if all(s['rir_feedback'] == 'HARD' for s in recent_two):
-                return 'DECREASE_LOAD'
-                
-        # If not pec affected, ONE failure this session is enough to decrease
-        if not pec_affected and session['rir_feedback'] == 'FAILURE':
-            return 'DECREASE_LOAD'
-        
-        # TWO consecutive HARD sessions decrease (non-pec affected)
-        if len(recent_sessions) >= 2:
-            recent_two = recent_sessions[-2:]
-            if all(s['rir_feedback'] == 'HARD' for s in recent_two):
-                return 'DECREASE_LOAD'
-    
-    # Performance drop rule
-    if len(recent_sessions) >= 3:
-        # Get the last three sessions (most recent first)
-        top_sets = [max(s['actual_reps']) for s in recent_sessions[:3]]
-        
-        # Performance drop: top_set of this session < prev_top_set - 2 AND 
-        # prev_top_set < prev_prev_top_set - 2
-        if (top_sets[0] < top_sets[1] - 2 and 
-            top_sets[1] < top_sets[2] - 2):
-            return 'DECREASE_LOAD'
-    
+    if phase == "BASELINE": return None
+    history = list(recent_sessions) + [session]
+    last2 = history[-2:]
+    if pec_affected and session["rir_feedback"] == "FAILURE": return "DECREASE_LOAD"
+    if len(last2) == 2 and pec_affected and all(s["rir_feedback"] == "HARD" for s in last2): return "DECREASE_LOAD"
+    if len(last2) == 2 and all(s["rir_feedback"] == "FAILURE" for s in last2): return "DECREASE_LOAD"
+    midpoint = sum(rep_range) / 2
+    if len(last2) == 2 and all(s["rir_feedback"] == "EASY" for s in last2) and all(min(s["actual_reps"]) >= midpoint for s in last2):
+        return "INCREASE_LOAD"
+    last3 = history[-3:]
+    if len(last3) == 3:
+        tops = [max(s["actual_reps"]) for s in last3]
+        if tops[2] < tops[1] - 2 and tops[1] < tops[0] - 2: return "DECREASE_LOAD"
     return None
 
-
 def evaluate_session(state, actual_reps, rir_feedback):
-    """Evaluate a session and determine the next recommended action.
-    
-    Args:
-        state: dict - exercise_state record
-        actual_reps: list of int - actual repetitions performed
-        rir_feedback: str - RIR feedback ('EASY', 'TARGET', 'HARD', 'FAILURE')
-        
-    Returns:
-        dict: Recommendation with keys: exercise_id, action, reason, next_load, 
-              next_rep_target, mesocycle_phase, sessions_in_mesocycle
-    """
-    # Extract state components
-    exercise_id = state['exercise_id']
-    current_load = state['current_load']
-    rep_range_lo = state['rep_range_lo']
-    rep_range_hi = state['rep_range_hi'] 
-    load_step = state['load_step']
-    rir_target_lo = state['rir_target_lo']
-    rir_target_hi = state['rir_target_hi']
-    sessions_in_mesocycle = state['sessions_in_mesocycle']
-    recent_sessions_json = state['recent_sessions_json']
-    progression_mode = state['progression_mode']
-    
-    # If mesocycle counter is 11 (MESOCYCLE_DELOAD), return MESOCYCLE_DELOAD immediately
-    if sessions_in_mesocycle == 11:
-        return {
-            'exercise_id': exercise_id,
-            'action': 'MESOCYCLE_DELOAD',
-            'reason': 'Mesocycle complete - no further progression',
-            'next_load': None,
-            'next_rep_target': None,
-            'mesocycle_phase': mesocycle_phase(sessions_in_mesocycle),
-            'sessions_in_mesocycle': sessions_in_mesocycle
-        }
-    
-    # Run step1 first
-    recent_sessions = []  # In the actual implementation, this should come from recent_sessions_json
-    
-    # Determine if pec is affected (from rir_target)
-    pec_affected = (rir_target_lo == 3 and rir_target_hi == 4)
-    
-    # Run Step1
-    step1_action = step1(actual_reps, (rep_range_lo, rep_range_hi), rir_feedback, pec_affected)
-    
-    final_action = step1_action
-    
-    # If HOLD_LOAD and not in BASELINE phase, run Step2 
-    if step1_action == 'HOLD_LOAD' and mesocycle_phase(sessions_in_mesocycle) != 'BASELINE':
-        step2_action = step2(recent_sessions, {'actual_reps': actual_reps, 'rir_feedback': rir_feedback}, 
-                           (rep_range_lo, rep_range_hi), mesocycle_phase(sessions_in_mesocycle), pec_affected)
-        
-        if step2_action is not None:
-            final_action = step2_action
-    
-    # Apply action rules
-    next_load = current_load
-    next_rep_target = f"{rep_range_lo}-{rep_range_hi}"
-    
-    reason_text = ""
-    
-    if final_action == 'INCREASE_LOAD':
-        next_load = current_load + load_step
-        reason_text = f"All {len(actual_reps)} sets reached {rep_range_hi} reps at {rir_feedback.lower()} RIR."
-        
-    elif final_action == 'DECREASE_LOAD':
-        next_load = current_load - load_step
-        reason_text = "Below target or failed set detected."
-        
-    else:  # HOLD_LOAD
-        reason_text = f"Session within target range; performance consistent with expectations." 
-    
-    return {
-        'exercise_id': exercise_id,
-        'action': final_action,
-        'reason': reason_text,
-        'next_load': next_load,
-        'next_rep_target': next_rep_target,
-        'mesocycle_phase': mesocycle_phase(sessions_in_mesocycle),
-        'sessions_in_mesocycle': sessions_in_mesocycle
-    }
+    counter = int(state.get("sessions_in_mesocycle", 0)) % 12
+    phase = mesocycle_phase(counter)
+    base = {"exercise_id": state["exercise_id"], "mesocycle_phase": phase, "sessions_in_mesocycle": counter}
+    if phase == "MESOCYCLE_DELOAD":
+        return {**base, "action": "MESOCYCLE_DELOAD", "reason": "Mesocycle deload session.",
+                "next_load": None, "next_rep_target": "use the programmed deload prescription"}
+    recent = json.loads(state.get("recent_sessions_json") or "[]")
+    rep_range = (state["rep_range_lo"], state["rep_range_hi"])
+    pec = (state.get("rir_target_lo"), state.get("rir_target_hi")) == (3, 4)
+    session = {"actual_reps": list(actual_reps), "rir_feedback": rir_feedback}
+    action = step1(actual_reps, rep_range, rir_feedback, pec)
+    if action == "HOLD_LOAD": action = step2(recent, session, rep_range, phase, pec) or action
+    load, load_step = state.get("current_load"), state.get("load_step")
+    next_load = load
+    if action == "INCREASE_LOAD" and load is not None and load_step is not None:
+        next_load, reason = load + load_step, f"All {len(actual_reps)} sets reached {rep_range[1]} reps at {rir_feedback.lower()} effort."
+        target = f"expect a drop toward {rep_range[0]}-{rep_range[0] + 1} reps at the new weight"
+    elif action == "DECREASE_LOAD" and load is not None and load_step is not None:
+        next_load, reason = max(0, load - load_step), "Failure or a sustained performance drop called for one load-step decrease."
+        target = f"rebuild within {rep_range[0]}-{rep_range[1]} reps"
+    else:
+        reason, target = "Hold the current load and continue progressing reps.", f"continue toward {rep_range[1]} reps on every set"
+    return {**base, "action": action, "reason": reason, "next_load": next_load, "next_rep_target": target}
+
+def apply_ramp(state, recommendation, checkin_history):
+    out = copy.deepcopy(recommendation)
+    if state.get("progression_mode") != "ramp_governed": return out
+    counter = int(state.get("sessions_in_mesocycle", 0)) % 12
+    out["target_sets"] = 3 if counter <= 3 else (4 if counter <= 10 else 5)
+    ceiling = float(state.get("ramp_load_ceiling", state.get("start_load", 95.0)))
+    ceiling += int(state.get("completed_mesocycles", 0)) * float(state.get("load_step") or 0)
+    if out["action"] == "INCREASE_LOAD" and (out.get("next_load") or 0) > ceiling:
+        out.update(action="HOLD_LOAD", next_load=state.get("current_load"), event="MESOCYCLE_PHASE_ADVANCE",
+                   note="load deferred - ramp ceiling", reason="Load increase deferred by the shoulder ramp ceiling.")
+    return out
+
+def apply_reps_only(state, recommendation):
+    out = copy.deepcopy(recommendation)
+    if state.get("progression_mode") != "reps_only": return out
+    lo, hi = int(state["rep_range_lo"]), int(state["rep_range_hi"])
+    configured_range = state.get("rep_range") or (lo, hi)
+    cap = int(state.get("rep_range_ceiling") or (20 if state["exercise_id"] == "pull_ups" else 30))
+    if out["action"] == "INCREASE_LOAD":
+        out["action"] = "INCREASE_DIFFICULTY"
+        if state.get("vest_progression_enabled") and state.get("added_weight_lb", 0) + 5 <= state.get("vest_max_lb", 0):
+            out["added_weight_lb"] = state.get("added_weight_lb", 0) + 5
+        else:
+            out["rep_range_hi"] = min(cap, hi + 2)
+            out["rep_range_lo"] = min(out["rep_range_hi"] - (hi - lo), lo + 2)
+            if out["rep_range_hi"] == cap:
+                out["next_rep_target"] = "swap to a heavier band" if state["exercise_id"] == "band_pull_aparts" else "extend further or consider added resistance"
+    elif out["action"] == "DECREASE_LOAD":
+        out["action"] = "DECREASE_DIFFICULTY"
+        out["rep_range_lo"] = max(int(state.get("seed_rep_range_lo", configured_range[0])), lo - 2)
+        out["rep_range_hi"] = max(int(state.get("seed_rep_range_hi", configured_range[1])), hi - 2)
+    return out

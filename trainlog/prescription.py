@@ -3,6 +3,8 @@ import datetime
 from trainlog import engine as E
 from trainlog.config import WEEKDAYS
 from trainlog.program import load_program, day_exercises
+from trainlog.db import query
+from trainlog.loading_config import load_phase2_config
 
 
 def weekday_of(date_str):
@@ -91,6 +93,8 @@ def build_day(date_str, state, logged=None):
     # ---- exercises -----------------------------------------------------
     raw, day_note = day_exercises(weekday, wtype, cycle)
     exercises, landing_pairs = [], []
+    engine_states = {r["exercise_id"]: dict(r) for r in query("SELECT * FROM exercise_state")}
+    phase2 = load_phase2_config()["exercises"]
 
     for ex in raw:
         eid, prog = ex["id"], ex.get("progression", "none")
@@ -98,6 +102,9 @@ def build_day(date_str, state, logged=None):
         target_reps = ex["reps"] if isinstance(ex.get("reps"), int) else None
         load = ex.get("load")
         pull_sets = None
+
+        es = engine_states.get(eid)
+        ec = phase2.get(eid)
 
         if prog in ("lower", "upper"):
             load = E.working_load(ex["load"], prog, cycle, week, cfg)
@@ -116,6 +123,17 @@ def build_day(date_str, state, logged=None):
             sets = ex.get("sets") or 0
         elif ex.get("kind") in ("accessory", "drill"):
             sets = E.accessory_sets(ex, week, cfg)
+
+        if es and ec and es["progression_mode"] != "excluded":
+            sets = es["target_sets"] + (ec.get("offset_from_reference", 0) if weekday != ec.get("reference_day", weekday) else 0)
+            load = es["current_load"]
+            target_reps = es["rep_range_lo"]
+            if E.is_deload(week) or es["sessions_in_mesocycle"] == 11:
+                category = ec["category"]
+                if category in ("compound", "compound_press") and load is not None:
+                    load = E.round_to(load * 0.60, cfg["round_to"])
+                elif category in ("moderate_load", "isolation") and not ec.get("protected"):
+                    sets = max(1, E.round_half_up(sets * 0.60))
 
         if eid in scale_sets:
             sets = max(1, E.round_half_up(sets * scale_sets[eid]))
@@ -159,6 +177,7 @@ def build_day(date_str, state, logged=None):
             "skipped": skipped, "note": ex.get("note"),
             "unit_label": ex.get("unit_label"),
             "landings_per_rep": ex.get("landings_per_rep", 0),
+            "loading_engine": bool(es and es["progression_mode"] != "excluded"),
             "minutes": ex.get("minutes"),
             "set_rows": rows,
             "extra_fields": _extra_fields(ex, lmetrics),

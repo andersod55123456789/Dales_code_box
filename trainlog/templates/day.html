@@ -156,6 +156,14 @@
 
     {% if ex.set_rows and not ex.skipped %}
     <button class="btn small" onclick="exDone('{{ ex.id }}')">All sets as prescribed</button>
+    {% if ex.loading_engine %}
+    <div class="rir-prompt" hidden><p>How many more good reps could you have done?</p>
+      <button class="btn small" onclick="sendFeedback('{{ ex.id }}','EASY')">Could have done 4+ more</button>
+      <button class="btn small" onclick="sendFeedback('{{ ex.id }}','TARGET')">Could have done 2-3 more</button>
+      <button class="btn small" onclick="sendFeedback('{{ ex.id }}','HARD')">Could have done 1 more</button>
+      <button class="btn small" onclick="sendFeedback('{{ ex.id }}','FAILURE')">Could not have done another good rep</button>
+    </div>
+    {% endif %}
     {% endif %}
   </div>
   {% endfor %}

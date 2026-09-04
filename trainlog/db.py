@@ -60,6 +60,8 @@ def init_db(path=None):
     )
     conn.commit()
     conn.close()
+    from trainlog.loading_config import seed_exercise_state
+    seed_exercise_state(path=db_file)
 
 
 def query(sql, args=(), path=None):
