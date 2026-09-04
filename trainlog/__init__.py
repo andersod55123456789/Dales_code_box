@@ -10,6 +10,15 @@ def create_app():
         init_db()
     app.teardown_appcontext(close_db)
 
+    # On startup, retry any queued network-share sync (server may be back up).
+    with app.app_context():
+        try:
+            from trainlog import netsync
+            if netsync.pending():
+                netsync.sync_now()
+        except Exception:
+            pass  # sync must never block startup
+
     @app.context_processor
     def inject_xp():
         # Persistent XP bar + level badge in the nav on every page (Task 15).

@@ -196,6 +196,11 @@
   {% if day.day_complete %}DAY COMPLETE &mdash; click to undo{% else %}MARK DAY COMPLETE{% endif %}
 </button>
 
+<div style="margin-top:10px;display:flex;gap:10px;align-items:center">
+  <button class="btn ghost" id="syncbtn" onclick="syncNow()">Sync to server</button>
+  <span class="muted small" id="syncstatus"></span>
+</div>
+
 <div id="rest" class="rest" hidden><span id="restlbl"></span>
   <button class="btn ghost small" onclick="stopTimer()">skip</button></div>
 {% endblock %}

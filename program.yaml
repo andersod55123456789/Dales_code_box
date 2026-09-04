@@ -305,3 +305,12 @@ test_battery:
   - {key: balance_l,       name: "Single-leg balance (L)", unit: "s", baseline: null, direction: up}
   - {key: balance_r,       name: "Single-leg balance (R)", unit: "s", baseline: null, direction: up}
   - {key: sit_and_reach,   name: "Sit-and-reach",      unit: "in",  baseline: null, direction: up}
+
+
+# Network-share sync (trainlog/netsync.py). share_dir is the server copy of
+# the training DB. If unreachable, sync is queued and retried on next log/startup.
+# NOTE: single-quoted so the backslashes in the UNC path are literal.
+netsync:
+  enabled: true
+  share_dir: '\\192.168.0.21\DaleStorage\Exercise\Log'
+  keep_snapshots: 30

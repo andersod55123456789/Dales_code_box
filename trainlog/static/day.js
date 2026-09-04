@@ -209,6 +209,37 @@ if (dd) {
   });
 }
 
+// --- Network-share sync (manual button + status indicator) -------------
+async function syncNow() {
+  const el = document.getElementById('syncstatus');
+  if (el) el.textContent = 'syncing...';
+  try {
+    const d = await post('/api/sync_now', {});
+    if (el) {
+      el.textContent = d.ok
+        ? 'synced to ' + (d.share || 'server')
+        : ('queued - server unreachable (' + (d.status || '') + ')');
+    }
+    toast(d.ok ? 'Synced to server' : 'Server unreachable - will retry later');
+  } catch (e) {
+    if (el) el.textContent = 'sync failed';
+  }
+}
+
+async function loadSyncStatus() {
+  const el = document.getElementById('syncstatus');
+  if (!el) return;
+  try {
+    const r = await fetch('/api/sync_status');
+    const d = await r.json();
+    if (!d.enabled) { el.textContent = 'sync disabled'; return; }
+    el.textContent = d.pending
+      ? 'sync pending - will retry'
+      : (d.reachable ? 'server reachable' : 'server offline - will queue');
+  } catch (e) {}
+}
+loadSyncStatus();
+
 async function applyAdj(id) {
   try { await post('/api/adjustment/' + id + '/apply', {}); location.reload(); }
   catch (e) {}

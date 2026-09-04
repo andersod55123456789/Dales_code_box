@@ -197,6 +197,9 @@ def day_complete():
         res["achievements_unlocked"] = evaluate_achievements(date)
         from trainlog.attributes import recompute_attributes
         recompute_attributes()
+        # Sync the DB to the network share after a completed day (queues if down).
+        from trainlog import netsync
+        res["netsync"] = netsync.sync_now()
     return jsonify(res)
 
 
@@ -371,6 +374,18 @@ def backup():
         get_db().backup(tgt)
     tgt.close()
     return jsonify({"ok": True, "path": os.path.relpath(dest, config.APP_DIR)})
+
+
+@bp.post("/sync_now")
+def sync_now():
+    from trainlog import netsync
+    return jsonify(netsync.sync_now())
+
+
+@bp.get("/sync_status")
+def sync_status():
+    from trainlog import netsync
+    return jsonify(netsync.status())
 
 
 @bp.get("/export/sets.csv")
