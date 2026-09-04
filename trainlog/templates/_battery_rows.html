@@ -1,0 +1,22 @@
+<table class="battery">
+  <tr><th>Metric</th><th>Baseline</th><th>Latest</th><th>Change</th><th></th></tr>
+  {% for m in metrics %}
+  <tr {% if m.reference_only %}class="muted"{% endif %}>
+    <td>{{ m.name }}{% if m.reference_only %} <span class="muted small">reference only</span>{% endif %}</td>
+    <td>{{ m.baseline if m.baseline is not none else '—' }}</td>
+    <td>{{ m.latest_text if m.latest_text is not none else '—' }}</td>
+    <td>
+      {% if m.delta is not none %}
+        <span class="{% if m.good %}good{% elif m.good is false %}warn{% endif %}">
+          {% if m.direction == 'hold' %}&#9679; {{ 'in range' if m.good else 'out of range' }}
+          {% elif m.delta > 0 %}&#9650; +{{ '%.4g'|format(m.delta) }}
+          {% elif m.delta < 0 %}&#9660; {{ '%.4g'|format(m.delta) }}
+          {% else %}&#8212; 0{% endif %}
+        </span>
+      {% elif m.latest is not none %}<span class="good">&#9650; new</span>
+      {% else %}<span class="muted">—</span>{% endif %}
+    </td>
+    <td class="sp">{{ (c.sparks[m.key] if c is defined else '')|safe }}</td>
+  </tr>
+  {% endfor %}
+</table>

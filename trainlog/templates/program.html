@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}Program - TrainLog{% endblock %}
+{% block content %}
+<div class="card head">
+  <h1>Program</h1>
+  <p class="sub">Cycle {{ state.cycle }} &middot; Week {{ state.week }} &middot;
+    Week {{ state.week_type }} &middot; program week {{ state.program_week }}</p>
+  <p class="muted small">Started {{ state.started_on }} &middot;
+    OHP offset {{ state.ohp_cycle_offset }} &middot;
+    lifting days {{ state.gating_progress.complete }}/{{ state.gating_progress.of }}</p>
+</div>
+
+<div class="card {% if sync.in_sync %}ok-card{% else %}warning sev-warning{% endif %}">
+  <h2>program.yaml vs PROGRAM.md</h2>
+  {% if sync.in_sync %}
+    <p class="ok">&#10003; program.yaml matches PROGRAM.md</p>
+  {% else %}
+    <p class="wtitle">&#9888; {{ sync.mismatches|length }} mismatch(es)</p>
+    <table><tr><th>Exercise</th><th>Field</th><th>yaml</th><th>PROGRAM.md</th></tr>
+    {% for m in sync.mismatches %}<tr><td>{{ m.exercise }}</td><td>{{ m.field }}</td>
+      <td>{{ m.yaml }}</td><td>{{ m.markdown }}</td></tr>{% endfor %}</table>
+  {% endif %}
+  {% if sync.skipped %}
+  <details><summary>{{ sync.skipped|length }} row(s) not parsed</summary>
+    <ul>{% for s in sync.skipped %}<li>{{ s.weekday }}: {{ s.exercise }} &mdash; {{ s.reason }}</li>{% endfor %}</ul>
+  </details>
+  {% endif %}
+  {% if sync.note %}<p class="muted small">{{ sync.note }}</p>{% endif %}
+</div>
+
+<div class="card">
+  <h2>This week</h2>
+  <p><strong>Jump rope:</strong> {{ rope }}</p>
+  <p><strong>Fartlek:</strong>
+    {% if fart.pickups %}{{ fart.pickups }} &times; {{ fart.pickup_seconds }}s
+      on {{ fart.placement }}{% else %}none (deload){% endif %}</p>
+</div>
+
+{% for d in days %}
+<div class="card">
+  <h2>{{ d.weekday|capitalize }} &mdash; {{ d.name }}</h2>
+  {% if d.note %}<p class="muted small">{{ d.note }}</p>{% endif %}
+  {% if d.rows %}
+  <table><tr><th>Exercise</th><th>Sets</th><th>Reps</th><th>Load</th></tr>
+  {% for r in d.rows %}<tr><td>{{ r.name }}</td><td>{{ r.sets or '' }}</td>
+    <td>{{ r.reps if r.reps is not none else '' }}</td>
+    <td>{{ (r.load|string + ' lb') if r.load else '' }}</td></tr>{% endfor %}
+  </table>
+  {% else %}<p class="muted">Anchor only.</p>{% endif %}
+</div>
+{% endfor %}
+
+<div class="card">
+  <h2>Daily anchor</h2>
+  <table><tr><th>#</th><th>Item</th><th>Note</th></tr>
+  {% for a in program.anchor %}<tr><td>{{ a.order }}</td><td>{{ a.name }}</td>
+    <td class="muted small">{{ a.note or '' }}</td></tr>{% endfor %}</table>
+</div>
+
+<div class="card">
+  <h2>Utilities</h2>
+  <div class="row">
+    <button class="btn" onclick="doBackup()">Backup database</button>
+    <a class="btn ghost" href="/api/export/sets.csv">Export sets CSV</a>
+  </div>
+  <details><summary>Advanced &mdash; manual position override</summary>
+    <div class="row">
+      <label class="f">Cycle <input id="ovc" type="number" min="1" value="{{ state.cycle }}"></label>
+      <label class="f">Week <input id="ovw" type="number" min="1" max="4" value="{{ state.week }}"></label>
+      <button class="btn ghost" onclick="doOverride()">Set position</button>
+    </div>
+    <p class="muted small">Correction tool. Resets the repeat counter.</p>
+  </details>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+async function doBackup() {
+  const r = await fetch('/api/backup', {method:'POST',
+    headers:{'Content-Type':'application/json'}, body:'{}'});
+  const d = await r.json();
+  alert(d.ok ? 'Backed up to ' + d.path : 'Backup failed');
+}
+async function doOverride() {
+  const r = await fetch('/api/state/override', {method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({cycle: +document.getElementById('ovc').value,
+                          week: +document.getElementById('ovw').value})});
+  const d = await r.json();
+  if (d.ok) location.reload(); else alert(d.error);
+}
+</script>
+{% endblock %}

@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Tests - TrainLog{% endblock %}
+{% block content %}
+<div class="card head">
+  <h1>Test battery</h1>
+  <p class="sub">Cycle {{ state.cycle }} &middot; Week {{ state.week }}
+    {% if state.is_deload %}&middot; <span class="chip warn">DELOAD &mdash; due now</span>{% endif %}</p>
+</div>
+<div class="card">
+  <table class="battery">
+    <tr><th>Metric</th><th>Baseline</th><th>Latest</th><th>New value</th></tr>
+    {% for m in metrics %}
+    <tr {% if m.reference_only and state.program_week not in [12, 24] %}class="muted"{% endif %}>
+      <td>{{ m.name }}{% if m.unit %} <span class="muted small">{{ m.unit }}</span>{% endif %}</td>
+      <td>{{ m.baseline if m.baseline is not none else '—' }}</td>
+      <td>{{ m.latest_text if m.latest_text is not none else '—' }}</td>
+      <td><input class="tv" data-key="{{ m.key }}"
+             type="{{ 'text' if m.is_time else 'number' }}" step="any"
+             placeholder="{{ 'mm:ss' if m.is_time else '' }}"
+             value="{{ m.auto_value if m.auto_value is defined and m.auto_value is not none else '' }}"
+             {% if m.reference_only and state.program_week not in [12, 24] %}disabled{% endif %}></td>
+    </tr>
+    {% endfor %}
+  </table>
+  <button class="btn primary wide" id="savebattery">SAVE BATTERY</button>
+</div>
+<div class="card">
+  <h2>History</h2>
+  {% include "_battery_rows.html" %}
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const TEST_DATE = "{{ today }}";
+document.getElementById('savebattery').addEventListener('click', async () => {
+  const values = {};
+  document.querySelectorAll('.tv').forEach(i => {
+    if (i.value !== '' && !i.disabled) values[i.dataset.key] = i.value;
+  });
+  const r = await fetch('/api/tests', {method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({date: TEST_DATE, values})});
+  const d = await r.json();
+  if (d.ok) location.reload(); else alert(d.error || 'Save failed');
+});
+</script>
+{% endblock %}

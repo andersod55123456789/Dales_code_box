@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block title %}Progress - TrainLog{% endblock %}
+{% block content %}
+<div class="daynav">
+  {% for k, lbl in [('4w','Last 4 weeks'), ('12w','Last 12 weeks'), ('all','All')] %}
+  <a class="btn {% if rng == k %}primary{% else %}ghost{% endif %}"
+     href="/progress?range={{ k }}">{{ lbl }}</a>
+  {% endfor %}
+</div>
+
+<div class="card">
+  <h2>Strength and volume</h2>
+  {% for l in c.lifts %}
+  <div class="sub-chart">
+    <h3>{{ l.name }}
+      {% if l.delta is not none %}
+      <span class="{% if l.delta > 0 %}good{% elif l.delta < 0 %}warn{% endif %}">
+        {{ l.first }} &rarr; {{ l.last }} lb
+        ({{ '+' if l.delta > 0 else '' }}{{ l.delta }}{% if l.pct %}, {{ l.pct }}%{% endif %})
+      </span>
+      {% endif %}
+    </h3>
+    {{ l.svg|safe }}
+    {% if l.points %}
+    <details><summary>Show data</summary>
+      <table><tr><th>Date</th><th>Cycle/Week</th><th>Top load</th><th>Tonnage</th></tr>
+      {% for p in l.points %}<tr><td>{{ p.date }}</td>
+        <td>C{{ p.cycle }}W{{ p.week }}{% if p.is_deload %} (deload){% endif %}</td>
+        <td>{{ p.top_load }}</td><td>{{ '%.0f'|format(p.tonnage or 0) }}</td></tr>{% endfor %}
+      </table></details>
+    {% endif %}
+  </div>
+  {% endfor %}
+  <div class="sub-chart">
+    <h3>Weekly tonnage <span class="muted small">all lifts</span></h3>
+    {{ c.tonnage_svg|safe }}
+    {% if c.tonnage_rows %}
+    <details><summary>Show data</summary>
+      <table><tr><th>Cycle/Week</th><th>Tonnage</th><th>Deload</th></tr>
+      {% for t in c.tonnage_rows %}<tr><td>C{{ t.cycle }}W{{ t.week }}</td>
+        <td>{{ '%.0f'|format(t.tonnage) }}</td>
+        <td>{{ 'yes' if t.is_deload else '' }}</td></tr>{% endfor %}
+      </table></details>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card">
+  <h2>Wellness vs training load</h2>
+  <div class="legend">
+    {% for s in c.wellness_legend %}
+    <span class="lg"><i style="background:{{ s.color }}"></i>{{ s.name }}</span>
+    {% endfor %}
+  </div>
+  {{ c.wellness_svg|safe }}
+  <h3>Weekly tonnage <span class="muted small">same period, separate scale</span></h3>
+  {{ c.tonnage_svg|safe }}
+  {% if c.wellness_rows %}
+  <h3>Resting HR</h3>
+  <p class="hrrow">
+    {% for d in c.wellness_rows %}{% if d.resting_hr %}
+    <span class="hr">{{ d.resting_hr }}</span>{% endif %}{% endfor %}
+  </p>
+  <details><summary>Show data</summary>
+    <table><tr><th>Date</th><th>Sleep</th><th>Energy</th><th>Soreness</th><th>RHR</th></tr>
+    {% for d in c.wellness_rows %}<tr><td>{{ d.date }}</td><td>{{ d.sleep_quality }}</td>
+      <td>{{ d.energy }}</td><td>{{ d.soreness }}</td><td>{{ d.resting_hr or '' }}</td></tr>{% endfor %}
+    </table></details>
+  {% else %}<p class="empty">No data yet.</p>{% endif %}
+</div>
+
+<div class="card">
+  <h2>Adherence</h2>
+  <div class="tiles">
+    <div class="tile"><span class="big">{{ adherence.anchor_streak }}</span>
+      <span class="muted">day anchor streak</span></div>
+    <div class="tile"><span class="big">{{ adherence.anchor_best_streak }}</span>
+      <span class="muted">best streak</span></div>
+    <div class="tile"><span class="big">{{ adherence.gating_done }} / {{ adherence.gating_possible }}</span>
+      <span class="muted">lifting days</span></div>
+  </div>
+  <h3>Completion by day</h3>
+  {% for w in adherence.by_weekday %}
+  <div class="hbar">
+    <span class="hlbl">{{ w.weekday[:3]|capitalize }}</span>
+    <span class="track"><span class="fill" style="width: {{ [100, w.pct]|min }}%"></span></span>
+    <span class="hval">{{ w.logged }}/{{ w.possible }} &middot; {{ w.pct }}%</span>
+  </div>
+  {% endfor %}
+  <h3>Anchor calendar <span class="muted small">last 12 weeks</span></h3>
+  <div class="cal">
+    {% for d in adherence.calendar %}
+    <i class="c-{{ d.state }}" title="{{ d.date }} - {{ d.count }} items"></i>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="card">
+  <h2>Test battery</h2>
+  {% include "_battery_rows.html" %}
+</div>
+{% endblock %}

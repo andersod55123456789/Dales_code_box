@@ -1,0 +1,30 @@
+# --- training data & backups (never push) ---
+data/
+backups/
+*.db
+*.db-wal
+*.db-shm
+_verify_tmp.db*
+
+# --- secrets ---
+*.local.md
+.env
+*.pem
+*.key
+
+# --- python ---
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+
+# --- OS / editor ---
+Thumbs.db
+.DS_Store
+.vscode/
+
+# --- run artifacts ---
+RUN_STATE.md
+FINAL_REPORT.md
+*.bak

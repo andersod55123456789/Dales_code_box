@@ -1,0 +1,260 @@
+# =====================================================================
+# phase2_exercise_config.yaml - seed data for exercise_state
+#
+# This is the table in 02_EXERCISE_CONFIG.md, as data. Read ONCE at first
+# startup after this phase ships, to seed exercise_state (03_SCHEMA_CHANGES.md).
+# Never re-read after that row exists - exercise_state is then the live
+# truth, owned by the engine.
+#
+# reference_day / offset_from_reference exist only for the two exercises
+# that appear on two days (landmine_press, calf_raise) - see the "shared
+# state" notes in 02_EXERCISE_CONFIG.md. Every other exercise omits them.
+# =====================================================================
+
+exercises:
+
+  # ---- Monday - Heavy Lower Body ----
+  back_squat:
+    category: compound
+    muscle_group: quads_glutes
+    rep_range: [6, 10]
+    sets: 4
+    load_step: 5.0
+    rir_target: [2, 3]
+    start_load: 185.0
+    progression_mode: standard
+    has_backoff: true
+
+  rdl:
+    category: compound
+    muscle_group: hamstrings_glutes
+    rep_range: [8, 12]
+    sets: 3
+    load_step: 5.0
+    rir_target: [2, 3]
+    start_load: 135.0
+    progression_mode: standard
+
+  bulgarian_split_squat:
+    category: moderate_load
+    muscle_group: quads_glutes
+    rep_range: [10, 15]
+    per_side: true
+    sets: 3
+    load_step: 5.0
+    rir_target: [2, 3]
+    start_load: 40.0
+    progression_mode: standard
+
+  calf_raise:
+    category: isolation
+    muscle_group: calves
+    rep_range: [12, 20]
+    sets: 3
+    load_step: 5.0
+    rir_target: [2, 3]
+    start_load: 25.0
+    progression_mode: standard
+    reference_day: monday
+    offset_from_reference: 0     # Friday renders at the same target_sets
+
+  # ---- Wednesday - Upper Body ----
+  pull_ups:
+    category: bodyweight_compound
+    muscle_group: back
+    rep_range: [8, 12]
+    sets: 4
+    load_step: null
+    rir_target: [2, 3]
+    start_load: null
+    progression_mode: reps_only
+    vest_progression_enabled: false
+    vest_max_lb: 20.0
+    rep_range_ceiling: 20
+
+  barbell_row:
+    category: compound
+    muscle_group: back
+    rep_range: [8, 12]
+    sets: 4
+    load_step: 5.0
+    rir_target: [2, 3]
+    start_load: 135.0
+    progression_mode: standard
+    has_backoff: true
+
+  db_row:
+    category: moderate_load
+    muscle_group: back
+    rep_range: [10, 15]
+    per_side: true
+    sets: 3
+    load_step: 5.0
+    rir_target: [2, 3]
+    start_load: 50.0
+    progression_mode: standard
+
+  db_floor_press:
+    category: moderate_load
+    muscle_group: chest
+    rep_range: [10, 15]
+    sets: 3
+    load_step: 5.0
+    rir_target: [3, 4]
+    start_load: 45.0
+    progression_mode: standard
+    pec_affected: true
+
+  ohp:
+    category: compound_press
+    muscle_group: shoulders
+    rep_range: [6, 10]
+    sets: 3
+    load_step: 2.5
+    rir_target: [3, 4]
+    start_load: 95.0
+    progression_mode: ramp_governed
+    pec_affected: true
+    ramp:
+      sets_by_session: {0: 3, 4: 4, 11: 5}   # sessions_in_mesocycle thresholds
+      load_ceiling_start: 95.0
+      load_ceiling_step: 2.5                 # per full 12-session wrap, if eligible
+
+  landmine_press:
+    category: moderate_load
+    muscle_group: shoulders_chest
+    rep_range: [10, 15]
+    per_side: true
+    sets: 2
+    load_step: 5.0
+    rir_target: [3, 4]
+    start_load: 45.0
+    progression_mode: standard
+    pec_affected: true
+    reference_day: wednesday
+    offset_from_reference: 1     # Friday renders at target_sets + 1
+
+  db_lateral_raise:
+    category: isolation
+    muscle_group: shoulders
+    rep_range: [12, 20]
+    sets: 3
+    load_step: 2.5
+    rir_target: [2, 3]
+    start_load: 15.0
+    progression_mode: standard
+
+  face_pulls:
+    category: isolation
+    muscle_group: shoulders
+    rep_range: [15, 20]
+    sets: 3
+    load_step: 5.0
+    rir_target: [2, 3]
+    start_load: 30.0
+    progression_mode: standard
+    protected: true
+
+  band_pull_aparts:
+    category: isolation
+    muscle_group: shoulders
+    rep_range: [15, 25]
+    rep_range_ceiling: 30
+    sets: 3
+    load_step: null
+    rir_target: [2, 3]
+    start_load: null
+    progression_mode: reps_only
+    protected: true
+
+  curls:
+    category: isolation
+    muscle_group: biceps
+    rep_range: [10, 15]
+    sets: 3
+    load_step: 5.0
+    rir_target: [2, 3]
+    start_load: 30.0
+    progression_mode: standard
+
+  triceps:
+    category: isolation
+    muscle_group: triceps
+    rep_range: [12, 20]
+    sets: 3
+    load_step: 5.0
+    rir_target: [2, 3]
+    start_load: 40.0
+    progression_mode: standard
+
+  # ---- Friday - Moderate Full Body ----
+  deadlift:
+    category: compound
+    muscle_group: hamstrings_glutes
+    rep_range: [6, 10]
+    sets: 3
+    load_step: 5.0
+    rir_target: [2, 3]
+    start_load: 185.0
+    progression_mode: standard
+    has_backoff: true
+
+  front_squat:
+    category: compound
+    muscle_group: quads_glutes
+    rep_range: [8, 12]
+    sets: 3
+    load_step: 5.0
+    rir_target: [2, 3]
+    start_load: 135.0
+    progression_mode: standard
+
+  pull_ups_fri:
+    category: bodyweight_submax
+    muscle_group: back
+    rep_range: null
+    sets: 3
+    load_step: null
+    rir_target: null
+    start_load: null
+    progression_mode: excluded
+    fixed_submax_target: 9
+
+  walking_lunges:
+    category: moderate_load
+    muscle_group: quads_glutes
+    rep_range: [10, 15]
+    per_side: true
+    sets: 3
+    load_step: 5.0
+    rir_target: [2, 3]
+    start_load: 30.0
+    progression_mode: standard
+
+  push_ups:
+    category: bodyweight_press
+    muscle_group: chest
+    rep_range: [12, 20]
+    sets: 2
+    load_step: null
+    rir_target: [3, 4]
+    start_load: null
+    progression_mode: reps_only
+    pec_affected: true
+    vest_progression_enabled: false
+    vest_max_lb: 20.0
+    rep_range_ceiling: 30
+
+# =====================================================================
+# muscle_group_ceilings - seeds muscle_group_state.
+# Starting proposals, not measured facts - see 02_EXERCISE_CONFIG.md.
+# =====================================================================
+muscle_group_ceilings:
+  quads_glutes:       {baseline_weekly_sets: 10, ceiling: 16}
+  hamstrings_glutes:  {baseline_weekly_sets: 6,  ceiling: 10}
+  back:               {baseline_weekly_sets: 11, ceiling: 16}
+  chest:              {baseline_weekly_sets: 8,  ceiling: 12}
+  shoulders:          {baseline_weekly_sets: 14, ceiling: 18}
+  biceps:             {baseline_weekly_sets: 3,  ceiling: 8}
+  triceps:            {baseline_weekly_sets: 3,  ceiling: 8}
+  calves:             {baseline_weekly_sets: 6,  ceiling: 10}

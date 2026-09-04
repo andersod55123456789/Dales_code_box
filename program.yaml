@@ -1,0 +1,307 @@
+# =====================================================================
+# program.yaml - THE PROGRAM AS DATA
+#
+# This file is the app's source of truth for what to do on any given day.
+# PROGRAM.md (one folder up) is the human-readable version of the same
+# program. This file is already complete and correct. DO NOT invent or
+# change values in it while building the app.
+#
+# Copy this file to the app root as: app/program.yaml
+# =====================================================================
+
+meta:
+  athlete: "48M, 5 ft 9 in, 168 lb"
+  started_on: "2026-09-03"
+  total_cycles: 6
+  weeks_per_cycle: 4
+  reassess_after_cycles: [3, 6]
+
+config:
+  units: "lb"
+  bedtime: "22:30"              # used by the evening guardrail
+  round_to: 2.5                 # all computed loads round to nearest 2.5 lb
+  increment_lower: 5.0          # week 2 bump for lower-body main lifts
+  increment_upper: 2.5          # week 2 bump for upper-body main lifts
+  deload_load_factor: 0.60      # week 4 main-lift load = 60% of week 2/3
+  deload_volume_factor: 0.60    # week 4 accessory sets = 60% of normal
+  week3_accessory_extra_sets: 1
+  backoff_factor: 0.80          # back-off set load = 80% of working load
+  backoff_reps_shy: 2           # "AMRAP minus 2"
+  gating_days: ["monday", "wednesday", "friday"]
+
+guardrails:
+  max_high_force_landings: 40
+  hard_cns_days: ["monday", "tuesday", "friday"]
+  evening_cutoff_hours_before_bed: 3
+  soreness_flag_threshold: 4      # 1-5 scale; >= this counts as elevated
+  soreness_flag_days: 3           # elevated on this many of last 7 days
+  resting_hr_baseline: 55
+  resting_hr_flag_delta: 5        # >= baseline+5 for 3 straight days
+  shoulder_pain_events_per_cycle: 2
+
+# ---------------------------------------------------------------------
+# DAILY ANCHOR - performed every single day, in this order.
+# Every field has a "default": the app pre-fills it so the athlete can
+# click Done without typing. Editing a field then clicking Done records
+# the edited value instead.
+# ---------------------------------------------------------------------
+anchor:
+  - key: yoga
+    name: "Yoga"
+    order: 1
+    note: "Primary mobility practice"
+    fields:
+      - {key: minutes, label: "Minutes", type: number, unit: "min", default: 20}
+      - {key: style, label: "Style", type: text, default: "Vinyasa"}
+
+  - key: elliptical
+    name: "Easy elliptical"
+    order: 2
+    note: "Achilles / lower-leg prep"
+    fields:
+      - {key: minutes, label: "Minutes", type: number, unit: "min", default: 5}
+      - {key: resistance, label: "Resistance", type: number, default: 4}
+
+  - key: jump_rope
+    name: "Jump rope"
+    order: 3
+    note: "Beginner skill work; soft landings, low bounce"
+    # The interval text is NOT fixed - it is derived from the cycle.
+    # See 04_PROGRESSION_ENGINE.md, rule R7.
+    interval_by_cycle:
+      1: "30s on / 30s off"
+      2: "45s on / 15s off"
+      default: "60s continuous"
+    deload_week_interval: "skill practice only, untimed"
+    fields:
+      - {key: rounds, label: "Rounds", type: number, default: 5}
+      - {key: trips, label: "Trips / misses", type: number, default: 0}
+
+  - key: incline_walk
+    name: "Weighted incline walk"
+    order: 4
+    note: "Substantial aerobic stimulus, not a warm-up"
+    fields:
+      - {key: distance_mi, label: "Distance", type: number, unit: "mi", default: 1.0}
+      - {key: incline_pct, label: "Incline", type: number, unit: "%", default: 13}
+      - {key: vest_lb, label: "Vest", type: number, unit: "lb", default: 20}
+      - {key: minutes, label: "Time", type: number, unit: "min", default: 18}
+      - {key: avg_hr, label: "Avg HR", type: number, unit: "bpm", default: null}
+
+  - key: core
+    name: "Core"
+    order: 5
+    note: "Existing routine; anti-rotation on Mon/Wed/Fri"
+    fields:
+      - {key: minutes, label: "Minutes", type: number, unit: "min", default: 8}
+      - {key: anti_rotation_done, label: "Anti-rotation block", type: bool, default: false}
+    anti_rotation:
+      days: ["monday", "wednesday", "friday"]
+      items:
+        - "Pallof press 2x10/side"
+        - "Suitcase carry 2x30 yd/side"
+
+  - key: cars
+    name: "Shoulder + hip CARs"
+    order: 6
+    note: "Controlled articular rotations"
+    fields:
+      - {key: minutes, label: "Minutes", type: number, unit: "min", default: 5}
+
+# ---------------------------------------------------------------------
+# MAIN WORK BY WEEKDAY
+#
+# exercise fields:
+#   id            stable snake_case key - used as the DB foreign key. NEVER change.
+#   name          display name
+#   kind          "main" | "accessory" | "pullup" | "timed" | "drill" | "cardio"
+#   sets, reps    baseline prescription (integers). reps may be a string
+#                 like "AMRAP-2" or "submax" for non-numeric targets.
+#   load          baseline load in lb, or null for bodyweight/variable
+#   progression   "lower" | "upper" | "none" | "ramp_ohp" | "pullup_total"
+#   backoff       true if this lift gets a 80% back-off AMRAP-2 set after it
+#   protected     true = never reduced, not even on deload week
+#   week3_extra_set  true = this is one of the two accessories that gain a set in week 3
+#   landings_per_rep  high-force landings contributed per rep (default 0)
+#   rest_seconds  rest timer duration after each set
+# ---------------------------------------------------------------------
+days:
+
+  monday:
+    name: "Heavy Lower Body"
+    focus: "strength"
+    gating: true
+    hard_cns: true
+    exercises:
+      - {id: back_squat,            name: "Back squat",            kind: main,      sets: 5, reps: 5,  load: 185, progression: lower, backoff: true,  rest_seconds: 180}
+      - {id: rdl,                   name: "Romanian deadlift",     kind: main,      sets: 3, reps: 8,  load: 135, progression: lower, rest_seconds: 120}
+      - {id: bulgarian_split_squat, name: "Bulgarian split squat", kind: accessory, sets: 2, reps: 10, load: 40,  progression: none, week3_extra_set: true, per_side: true, rest_seconds: 90}
+      - {id: calf_raise,            name: "Standing calf raise",   kind: accessory, sets: 3, reps: 15, load: 25,  progression: none, week3_extra_set: true, rest_seconds: 60}
+      - {id: core_finisher,         name: "Core finisher + anti-rotation", kind: timed, sets: 1, reps: null, minutes: 8, load: null, progression: none}
+
+  tuesday:
+    name: "Athletic"
+    focus: "power/agility"
+    gating: false
+    hard_cns: true
+    note: "Stop when landing quality degrades regardless of the count."
+    exercises:
+      - {id: ladder,          name: "Ladder work",            kind: drill, sets: 4, reps: 2,  load: null, progression: none, unit_label: "patterns x passes", landings_per_rep: 0}
+      - {id: cone_5_10_5,     name: "Cone drills / 5-10-5",   kind: drill, sets: 1, reps: 4,  load: null, progression: none, unit_label: "reps", landings_per_rep: 0, extra_fields: [{key: best_time_s, label: "Best time", type: number, unit: "s", default: null}]}
+      - {id: carioca,         name: "Carioca",                kind: drill, sets: 2, reps: 20, load: null, progression: none, unit_label: "yd each way", landings_per_rep: 0}
+      - {id: lateral_shuffle, name: "Lateral shuffle",        kind: drill, sets: 2, reps: 20, load: null, progression: none, unit_label: "yd each way", landings_per_rep: 0}
+      - {id: backward_run,    name: "Backward running",       kind: drill, sets: 2, reps: 20, load: null, progression: none, unit_label: "yd", landings_per_rep: 0}
+      - {id: broad_jump,      name: "Broad jumps",            kind: accessory, sets: 3, reps: 5, load: null, progression: none, landings_per_rep: 1, rest_seconds: 90, note: "Stick every landing"}
+      - {id: low_box_jump,    name: "Low box jumps (12-18 in)", kind: accessory, sets: 3, reps: 5, load: null, progression: none, landings_per_rep: 1, rest_seconds: 90, note: "Step down, never jump down"}
+      - {id: kb_swings,       name: "KB swings",              kind: accessory, sets: 3, reps: 15, load: 53, progression: none, rest_seconds: 90}
+      - {id: sled_push,       name: "Sled push or heavy carry", kind: accessory, sets: 3, reps: 20, load: null, progression: none, optional: true, unit_label: "yd", rest_seconds: 120}
+    # Cycle 3+ optionally adds rope intervals here. Rope is LOW force and
+    # does NOT count against max_high_force_landings.
+    cycle3_plus_addon:
+      id: rope_intervals
+      name: "Jump rope intervals"
+      minutes: 3
+      optional: true
+      landings_per_rep: 0
+
+  wednesday:
+    name: "Upper Body"
+    focus: "pull-dominant, pec-conscious"
+    gating: true
+    hard_cns: false
+    note: "Longest main-work day (~55-65 min). Split across AM/PM if needed."
+    exercises:
+      - {id: pull_ups,          name: "Pull-ups",                    kind: pullup,    sets: 4, reps: "submax", load: null, progression: pullup_total, rest_seconds: 120, note: "Stop 2+ reps shy of failure"}
+      - {id: barbell_row,       name: "Barbell row",                 kind: main,      sets: 4, reps: 8,  load: 135, progression: upper, backoff: true, rest_seconds: 120}
+      - {id: db_row,            name: "DB row",                      kind: accessory, sets: 3, reps: 12, load: 50,  progression: none, week3_extra_set: true, per_side: true, rest_seconds: 90}
+      - {id: db_floor_press,    name: "Neutral-grip DB floor press", kind: accessory, sets: 4, reps: 11, load: 45,  progression: none, is_press: true, no_backoff: true, rest_seconds: 90, note: "Medium load OK - pec pain-free. Never taken near failure."}
+      - {id: ohp,               name: "Overhead press",              kind: main,      sets: 3, reps: 5,  load: 95,  progression: ramp_ohp, is_press: true, rest_seconds: 150, note: "Shoulder ramp governs this lift"}
+      - {id: landmine_press,    name: "Landmine press",              kind: accessory, sets: 2, reps: 10, load: 45,  progression: none, is_press: true, per_side: true, rest_seconds: 90}
+      - {id: db_lateral_raise,  name: "DB lateral raise",            kind: accessory, sets: 3, reps: 13, load: 15,  progression: none, week3_extra_set: true, rest_seconds: 60}
+      - {id: face_pulls,        name: "Face pulls",                  kind: accessory, sets: 3, reps: 15, load: 30,  progression: none, protected: true, rest_seconds: 60, note: "Shoulder conditioning priority"}
+      - {id: band_pull_aparts,  name: "Band pull-aparts",            kind: accessory, sets: 3, reps: 20, load: null, progression: none, protected: true, rest_seconds: 45}
+      - {id: curls,             name: "Curls",                       kind: accessory, sets: 3, reps: 11, load: 30,  progression: none, rest_seconds: 60}
+      - {id: triceps,           name: "Triceps rope pushdowns",      kind: accessory, sets: 3, reps: 11, load: 40,  progression: none, rest_seconds: 60, note: "No dips"}
+
+  thursday:
+    name: "Recovery / Easy Aerobic"
+    focus: "recovery"
+    gating: false
+    hard_cns: false
+    # Content depends on week type. See rule R6.
+    week_a:
+      note: "Anchor only. Optional easy Peloton / walk / foam roll."
+      exercises:
+        - {id: easy_optional, name: "Optional easy movement", kind: cardio, optional: true, sets: 1, reps: null, load: null, progression: none,
+           extra_fields: [{key: modality, label: "Modality", type: select, options: ["Peloton", "Walk", "Foam roll", "None"], default: "None"},
+                          {key: minutes, label: "Minutes", type: number, unit: "min", default: 20}]}
+    week_b:
+      note: "Anchor plus the standalone fartlek - ~25 min total, AM or early PM. Genuinely aerobic, not a hard interval session."
+      exercises:
+        - {id: fartlek_standalone, name: "Standalone fartlek", kind: cardio, sets: 1, reps: null, load: null, progression: none,
+           extra_fields: [{key: minutes, label: "Total time", type: number, unit: "min", default: 25},
+                          {key: pickups_done, label: "Pickups completed", type: number, default: null},
+                          {key: avg_hr, label: "Avg HR", type: number, unit: "bpm", default: null}]}
+
+  friday:
+    name: "Moderate Full Body"
+    focus: "hypertrophy-biased - 8-12 reps, ~90s rests"
+    gating: true
+    hard_cns: true
+    exercises:
+      - {id: deadlift,        name: "Deadlift",             kind: main,      sets: 3, reps: 8,  load: 185, progression: lower, backoff: true, rest_seconds: 150}
+      - {id: front_squat,     name: "Front squat",          kind: main,      sets: 3, reps: 8,  load: 135, progression: lower, rest_seconds: 120}
+      - {id: pull_ups_fri,    name: "Pull-ups",             kind: pullup,    sets: 3, reps: "submax", load: null, progression: none, submax_target: 9, rest_seconds: 90}
+      - {id: landmine_press,  name: "Landmine press",       kind: accessory, sets: 3, reps: 10, load: 45,  progression: none, is_press: true, per_side: true, rest_seconds: 90}
+      - {id: walking_lunges,  name: "Walking lunges",       kind: accessory, sets: 3, reps: 10, load: 30,  progression: none, week3_extra_set: true, per_side: true, rest_seconds: 90}
+      - {id: calf_raise,      name: "Standing calf raise",  kind: accessory, sets: 3, reps: 15, load: 25,  progression: none, week3_extra_set: true, rest_seconds: 60}
+      - {id: push_ups,        name: "Push-ups",             kind: accessory, sets: 2, reps: "AMRAP-2", load: null, progression: none, is_press: true, rest_seconds: 90, note: "Controlled tempo"}
+
+  saturday:
+    name: "Engine"
+    focus: "Zone 2, 45-90 min"
+    gating: false
+    hard_cns_week_a: true    # Week A carries pickups, so Week A Saturday is a hard day
+    hard_cns_week_b: false
+    week_a:
+      note: "Steady Zone 2, then final 10-12 min of 1 min brisk (~5K effort) / 1 min easy."
+      exercises:
+        - {id: engine_zone2, name: "Zone 2 engine", kind: cardio, sets: 1, reps: null, load: null, progression: none,
+           extra_fields: [{key: modality, label: "Modality", type: select, options: ["Run", "Peloton", "Bike", "Trail", "Ruck", "Long walk"], default: "Run"},
+                          {key: minutes, label: "Total time", type: number, unit: "min", default: 60},
+                          {key: pickups_done, label: "Pickups completed", type: number, default: null},
+                          {key: avg_hr, label: "Avg HR", type: number, unit: "bpm", default: null}]}
+    week_b:
+      note: "Pure Zone 2, 60-90 min. Optional 4-6 x 10s hill sprints at the end when feeling fresh."
+      exercises:
+        - {id: engine_zone2, name: "Zone 2 engine", kind: cardio, sets: 1, reps: null, load: null, progression: none,
+           extra_fields: [{key: modality, label: "Modality", type: select, options: ["Run", "Peloton", "Bike", "Trail", "Ruck", "Long walk"], default: "Run"},
+                          {key: minutes, label: "Total time", type: number, unit: "min", default: 75},
+                          {key: avg_hr, label: "Avg HR", type: number, unit: "bpm", default: null}]}
+        - {id: hill_sprints, name: "Hill sprints (10s)", kind: cardio, optional: true, sets: 5, reps: 1, load: null, progression: none, rest_seconds: 90}
+
+  sunday:
+    name: "Athletic / Fun"
+    focus: "~75% effort - enjoy moving, not a competition"
+    gating: false
+    hard_cns: false
+    exercises:
+      - {id: fun_activity, name: "Activity", kind: cardio, sets: 1, reps: null, load: null, progression: none,
+         extra_fields: [{key: activity, label: "Activity", type: select, options: ["Hiking", "Mountain biking", "Basketball", "Pickleball", "Obstacle work", "Sled work", "Other"], default: "Hiking"},
+                        {key: minutes, label: "Minutes", type: number, unit: "min", default: 75},
+                        {key: effort_pct, label: "Effort", type: number, unit: "%", default: 75}]}
+
+# ---------------------------------------------------------------------
+# FARTLEK PROGRESSION
+# base pickups = min(5 + cycle, 8); week 1 = base, wk2 = base+1,
+# wk3 = base+2, wk4 = 0. Duration 60s for cycles 1-3, 90s for cycle 4+.
+# See rule R5.
+# ---------------------------------------------------------------------
+fartlek:
+  base_formula: "min(5 + cycle, 8)"
+  pickup_seconds_by_cycle: {1: 60, 2: 60, 3: 60, default: 90}
+  easy_seconds: 60
+  week4_pickups: 0
+
+# ---------------------------------------------------------------------
+# OHP SHOULDER RAMP - overrides the week-2 upper increment entirely.
+# sets = min(cycle + 2, 5);  load = 95 + max(0, cycle - 3) * 2.5
+# See rule R4.
+# ---------------------------------------------------------------------
+ohp_ramp:
+  sets_formula: "min(cycle + 2, 5)"
+  load_formula: "95 + max(0, cycle - 3) * 2.5"
+  exempt_from_weekly_increment: true
+
+# ---------------------------------------------------------------------
+# PULL-UP PROGRESSION
+# cycle base total = 38 + 2 * (cycle - 1)
+# week 1 = base, wk2 = base+1, wk3 = base+2, wk4 = no addition (max retest)
+# Distributed descending across 4 sets. See rule R3.
+# ---------------------------------------------------------------------
+pullups:
+  cycle_1_base_total: 38
+  per_cycle_increase: 2
+  sets: 4
+  distribution_ratios: [0.32, 0.26, 0.21, 0.21]
+  week4_is_max_retest: true
+
+# ---------------------------------------------------------------------
+# TEST BATTERY - prompted during week 4 of every cycle.
+# direction: "up" | "down" | "hold" - used to color the delta.
+# ---------------------------------------------------------------------
+test_battery:
+  - {key: body_weight,     name: "Body weight",        unit: "lb",  baseline: 168,  direction: hold, target_range: [165, 172]}
+  - {key: waist,           name: "Waist circumference", unit: "in", baseline: null, direction: down}
+  - {key: resting_hr,      name: "Resting HR",         unit: "bpm", baseline: 55,   direction: down}
+  - {key: push_ups_2min,   name: "Push-ups / 2 min",   unit: "reps", baseline: 40,  direction: up}
+  - {key: sit_ups_2min,    name: "Sit-ups / 2 min",    unit: "reps", baseline: 40,  direction: up}
+  - {key: pull_ups_max,    name: "Pull-ups (max)",     unit: "reps", baseline: 20,  direction: up}
+  - {key: mile_1,          name: "1-mile run",         unit: "mm:ss", baseline: null, direction: down, is_time: true, primary_run_metric: true}
+  - {key: mile_2,          name: "2-mile run",         unit: "mm:ss", baseline: "18:00", direction: down, is_time: true, reference_only: true, retest_at_weeks: [12, 24]}
+  - {key: back_squat_load, name: "Back squat (5x5 working load)", unit: "lb", baseline: 185, direction: up, auto_from_log: back_squat}
+  - {key: deadlift_load,   name: "Deadlift (tested 5-rep)", unit: "lb", baseline: 225, direction: up}
+  - {key: plank,           name: "Plank",              unit: "mm:ss", baseline: null, direction: up, is_time: true}
+  - {key: balance_l,       name: "Single-leg balance (L)", unit: "s", baseline: null, direction: up}
+  - {key: balance_r,       name: "Single-leg balance (R)", unit: "s", baseline: null, direction: up}
+  - {key: sit_and_reach,   name: "Sit-and-reach",      unit: "in",  baseline: null, direction: up}

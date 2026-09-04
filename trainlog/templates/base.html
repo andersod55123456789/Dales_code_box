@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}TrainLog{% endblock %}</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+</head>
+<body>
+<nav class="nav">
+  <span class="brand">TrainLog</span>
+  <a href="/day/today">Today</a>
+  <a href="/checkin">Check-in{% if not checkin_done %}<span class="dot"></span>{% endif %}</a>
+  <a href="/progress">Progress</a>
+  <a href="/tests">Tests</a>
+  <a href="/program">Program</a>
+</nav>
+<main class="wrap">{% block content %}{% endblock %}</main>
+<div id="toast" class="toast" hidden></div>
+{% block scripts %}{% endblock %}
+</body>
+</html>

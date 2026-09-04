@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Check-in - TrainLog{% endblock %}
+{% block content %}
+<div class="card head">
+  <h1>Morning check-in</h1>
+  <p class="sub">{{ pretty }}</p>
+</div>
+<div class="card">
+  <label class="f wide">Hours slept
+    <input id="sleep_hours" type="number" step="0.25"
+           value="{{ checkin.sleep_hours if checkin and checkin.sleep_hours is not none else 7.5 }}">
+  </label>
+  {% for k, lbl in [('sleep_quality','Sleep quality'), ('energy','Energy'),
+                    ('soreness','Soreness'), ('mood','Mood')] %}
+  <div class="slider">
+    <span class="slbl">{{ lbl }}</span>
+    <span class="muted">1</span>
+    <input id="{{ k }}" type="range" min="1" max="5" step="1"
+           value="{{ checkin[k] if checkin and checkin[k] is not none else 3 }}"
+           oninput="document.getElementById('{{ k }}_v').textContent=this.value">
+    <span class="muted">5</span>
+    <output id="{{ k }}_v">{{ checkin[k] if checkin and checkin[k] is not none else 3 }}</output>
+  </div>
+  {% endfor %}
+  <label class="f wide">Resting HR
+    <input id="resting_hr" type="number" step="1"
+           value="{{ checkin.resting_hr if checkin and checkin.resting_hr is not none else '' }}">
+    <span class="u">bpm &middot; baseline {{ baseline_hr }}</span>
+  </label>
+</div>
+<div class="card">
+  <h2>Joints today</h2>
+  {% for k, lbl in [('pec_status','Pec'), ('knee_status','Knee'),
+                    ('shoulder_status','Shoulder')] %}
+  <div class="radios">
+    <span class="slbl">{{ lbl }}</span>
+    {% for v in ['ok','niggle','pain'] %}
+    <label class="r"><input type="radio" name="{{ k }}" value="{{ v }}"
+      {% if (checkin[k] if checkin else 'ok') == v %}checked{% endif %}> {{ v }}</label>
+    {% endfor %}
+  </div>
+  {% endfor %}
+</div>
+<div class="card">
+  <h2>Notes</h2>
+  <textarea id="notes" rows="2">{{ checkin.notes if checkin and checkin.notes else '' }}</textarea>
+</div>
+<button class="btn primary wide" id="savecheckin">SAVE CHECK-IN</button>
+<div id="warnbox"></div>
+{% endblock %}
+{% block scripts %}
+<script>const CHECKIN_DATE="{{ date }}";</script>
+<script src="{{ url_for('static', filename='checkin.js') }}"></script>
+{% endblock %}
