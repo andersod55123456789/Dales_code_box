@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Trophies · TrainLog{% endblock %}
+{% block content %}
+<h1>Trophies</h1>
+<p class="sub">Milestones earned from your own history - no competition but you.</p>
+
+{% for t in trophies %}
+<div class="card" style="{% if not t.unlocked %}opacity:.45{% endif %}">
+  <div style="display:flex;justify-content:space-between;align-items:center">
+    <h2 style="margin:0">{{ t.title }}</h2>
+    {% if t.unlocked %}<span class="pill good">Unlocked</span>
+    {% else %}<span class="pill">Locked</span>{% endif %}
+  </div>
+  <p class="note">{{ t.condition }}</p>
+  {% if t.unlocked %}
+  <p class="muted small">Unlocked {{ t.unlocked_at }}{% if t.detail %} · {{ t.detail }}{% endif %}</p>
+  {% endif %}
+</div>
+{% endfor %}
+{% endblock %}

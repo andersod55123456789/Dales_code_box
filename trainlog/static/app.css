@@ -153,3 +153,26 @@ font-size:16px;font-weight:600;z-index:30}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);
 background:var(--surface-raised);border:1px solid var(--border);
 border-radius:8px;padding:11px 18px;font-size:14px;z-index:40}
+
+/* XP bar in nav (Phase B Task 15) */
+.xp-widget{margin-left:auto;display:flex;align-items:center;gap:8px}
+.xp-badge{font-size:11px;font-weight:700;color:var(--series-1);
+border:1px solid var(--border);border-radius:6px;padding:2px 6px;
+background:var(--surface-raised)}
+.xp-bar{display:block;width:90px;height:8px;background:var(--surface-raised);
+border-radius:6px;overflow:hidden;border:1px solid var(--border)}
+.xp-fill{display:block;height:100%;background:var(--series-1);
+transition:width .3s}
+.xp-frac{font-size:11px}
+
+/* Reward card (Phase B Task 15, reused by E & F) */
+.reward-card{position:fixed;left:50%;top:18%;transform:translateX(-50%);
+background:var(--surface);border:1px solid var(--series-1);border-radius:12px;
+padding:20px 24px;z-index:50;min-width:260px;text-align:center;
+box-shadow:0 8px 30px rgba(0,0,0,.5);cursor:pointer}
+.reward-card h2{color:var(--series-1);margin:0 0 10px;text-transform:none;
+letter-spacing:0;font-size:18px}
+.reward-card ul{list-style:none;margin:0;padding:0;color:var(--text-secondary);
+font-size:13px}
+.reward-card ul li{margin:3px 0}
+.reward-card .muted{font-size:11px;margin-top:12px;display:block}

@@ -73,6 +73,10 @@ def day_payload(date):
         day["warnings"] = [dict(r) for r in query(
             "SELECT id, rule_key, message, suggestion, status"
             " FROM adjustment WHERE scope_date=?", (date,))]
+    from trainlog.mission import mission_summary
+    day["mission"] = mission_summary(date, day)
+    day["near_win"] = reports.near_win(date)
+    day["momentum"] = reports.momentum(date)
     return day
 
 
@@ -180,8 +184,19 @@ def day_complete():
         date = resolve_date(b.get("date"))
     except ValueError:
         return err("bad date")
-    res = logbook.set_day_complete(date, bool(b.get("complete", True)))
+    complete = bool(b.get("complete", True))
+    res = logbook.set_day_complete(date, complete)
     res.update({"ok": True, "state": state_payload()})
+    if complete:
+        from trainlog import xp
+        res.update(xp.award_day_complete(date))
+        # Phase E next-goal panel + Phase F achievement evaluation
+        from trainlog.reports import next_goal
+        res["next_goal"] = next_goal(date)
+        from trainlog.achievements import evaluate_achievements
+        res["achievements_unlocked"] = evaluate_achievements(date)
+        from trainlog.attributes import recompute_attributes
+        recompute_attributes()
     return jsonify(res)
 
 
@@ -300,6 +315,7 @@ def post_tests():
     st = logbook.get_state()
     battery = {m["key"]: m for m in load_program()["test_battery"]}
     n = 0
+    prs = []
     for key, raw in (b.get("values") or {}).items():
         m = battery.get(key)
         if not m:
@@ -310,13 +326,19 @@ def post_tests():
             return err(f"bad value for {key}: {raw!r}")
         if vnum is None:
             continue
+        from trainlog import xp as _xp
+        pr = _xp.detect_test_pr(key, vnum)  # before insert: compares to prior
         execute("INSERT INTO test_battery (test_date, cycle, week, metric_key,"
                 " value_num, value_text, created_at) VALUES (?,?,?,?,?,?,?) "
                 "ON CONFLICT (test_date, metric_key) DO UPDATE SET"
                 " value_num=excluded.value_num, value_text=excluded.value_text",
                 (date, st["cycle"], st["week"], key, vnum, vtext, now()))
+        if pr:
+            prs.append({"metric": key, "xp": pr[0]})
         n += 1
-    return jsonify({"ok": True, "saved": n})
+    from trainlog.attributes import recompute_attributes
+    recompute_attributes()
+    return jsonify({"ok": True, "saved": n, "test_prs": prs})
 
 
 @bp.get("/progress/strength")

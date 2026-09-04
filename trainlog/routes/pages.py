@@ -102,3 +102,29 @@ def program_view():
                                                  if i["key"] == "jump_rope")),
                            fart=fartlek(cycle, week, p["fartlek"]),
                            sync=run_sync_check(), checkin_done=True)
+
+
+@bp.get("/character")
+def character():
+    from trainlog import attributes
+    from trainlog.svg import line_chart
+    attrs = attributes.get_attributes()
+    # Build a sparkline per attribute from its detail history.
+    for a in attrs:
+        hist = (a.get("detail") or {}).get("history", [])
+        series = [{"color": "var(--accent)",
+                   "points": [{"x": i, "y": h["score"], "label": h["date"]}
+                              for i, h in enumerate(hist)]}]
+        a["sparkline"] = (line_chart(series, width=260, height=60,
+                                     sparkline=True) if len(hist) > 1
+                          else None)
+    return render_template("character.html", attributes=attrs,
+                           checkin_done=True)
+
+
+@bp.get("/trophies")
+def trophies():
+    from trainlog import achievements
+    return render_template("trophies.html",
+                           trophies=achievements.trophy_case(),
+                           checkin_done=True)

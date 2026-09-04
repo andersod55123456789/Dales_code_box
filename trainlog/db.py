@@ -58,6 +58,9 @@ def init_db(path=None):
         " started_on, updated_at) VALUES (1, 1, 1, 0, 0, NULL, ?, ?)",
         (started_on, now()),
     )
+    conn.execute(
+        "INSERT OR IGNORE INTO account_xp (id, total_xp, level, updated_at)"
+        " VALUES (1, 0, 1, ?)", (now(),))
     conn.commit()
     conn.close()
     from trainlog.loading_config import seed_exercise_state

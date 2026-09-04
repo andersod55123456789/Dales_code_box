@@ -16,9 +16,22 @@
 </div>
 {% endif %}
 
+{% if day.mission %}
+<div class="card mission-card">
+  <h2>Today's Mission</h2>
+  <div class="chips">
+    {% for cat, d in day.mission.categories.items() %}
+    <span class="chip">{{ cat }} &middot; {{ d.count }} &middot; ~{{ d.minutes }}m</span>
+    {% endfor %}
+  </div>
+  <p class="note">Reward: {{ day.mission.reward_text }}</p>
+  {% if day.near_win %}<p class="note" id="near-win">&#127919; {{ day.near_win }}</p>{% endif %}
+</div>
+{% endif %}
+
 <div class="card head">
   <h1>{{ day.weekday|upper }} &mdash; {{ day.day_name }}</h1>
-  <p class="sub">Cycle {{ day.cycle }} &middot; Week {{ day.week }} &middot;
+  <p class="sub muted small">Cycle {{ day.cycle }} &middot; Week {{ day.week }} &middot;
      Week {{ day.week_type }}{% if day.focus %} &middot; {{ day.focus }}{% endif %}</p>
   <div class="chips">
     {% if day.is_deload %}<span class="chip warn">DELOAD WEEK</span>{% endif %}

@@ -59,6 +59,13 @@ def process_exercise_session(date_str, exercise_id):
     if event:
         execute("INSERT INTO progression_event (day_log_id,exercise_id,event_type,detail_json,created_at) VALUES (?,?,?,?,?)",
                 (day["id"], exercise_id, event, json.dumps(recommendation), now()))
+        # Phase B Task 13: +25 XP on a difficulty increase (source=progression_event,
+        # so no double-counting possible). INCREASE_DIFFICULTY is the reps-only increase.
+        if recommendation["action"] in ("INCREASE_LOAD", "INCREASE_DIFFICULTY"):
+            from trainlog import xp as _xp
+            _xp.award("progression_event", _xp.XP_PROGRESSION_EVENT,
+                      exercise_id=exercise_id, day_log_id=day["id"],
+                      detail=f"{recommendation['action']} {exercise_id}")
     new_phase = mesocycle_phase(next_counter)
     if old_phase != new_phase and not event:
         execute("INSERT INTO progression_event (day_log_id,exercise_id,event_type,detail_json,created_at) VALUES (?,?,?,?,?)",

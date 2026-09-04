@@ -176,3 +176,39 @@ CREATE TABLE IF NOT EXISTS progression_event (
 );
 CREATE INDEX IF NOT EXISTS idx_progression_event_ex ON progression_event (exercise_id);
 CREATE INDEX IF NOT EXISTS idx_progression_event_date ON progression_event (created_at);
+
+-- Phase B: XP & account level ----------------------------------------
+CREATE TABLE IF NOT EXISTS account_xp (
+    id         INTEGER PRIMARY KEY CHECK (id = 1),
+    total_xp   INTEGER NOT NULL DEFAULT 0,
+    level      INTEGER NOT NULL DEFAULT 1,
+    updated_at TEXT    NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS xp_event (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    source      TEXT    NOT NULL,
+    amount      INTEGER NOT NULL,
+    exercise_id TEXT,
+    day_log_id  INTEGER REFERENCES day_log(id) ON DELETE CASCADE,
+    detail      TEXT,
+    created_at  TEXT    NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_xp_event_date ON xp_event (created_at);
+
+-- Phase C: fitness attributes ----------------------------------------
+CREATE TABLE IF NOT EXISTS attribute_state (
+    attribute        TEXT PRIMARY KEY CHECK (attribute IN
+                      ('strength','endurance','agility','mobility','conditioning')),
+    score            REAL NOT NULL DEFAULT 0,
+    level            INTEGER NOT NULL DEFAULT 1,
+    detail_json      TEXT,
+    last_computed_at TEXT NOT NULL
+);
+
+-- Phase F: achievements ----------------------------------------------
+CREATE TABLE IF NOT EXISTS achievement_unlocked (
+    achievement_key TEXT PRIMARY KEY,
+    unlocked_at     TEXT NOT NULL,
+    detail          TEXT
+);

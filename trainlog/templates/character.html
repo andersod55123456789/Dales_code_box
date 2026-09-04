@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Character · TrainLog{% endblock %}
+{% block content %}
+<h1>Character</h1>
+<p class="sub">Five attributes grown from your real logged data.</p>
+
+{% for a in attributes %}
+<div class="card">
+  <div style="display:flex;justify-content:space-between;align-items:baseline">
+    <h2 style="margin:0">{{ a.attribute.capitalize() }}</h2>
+    <span class="pill">Lv {{ a.level }} · {{ a.score }}</span>
+  </div>
+  <div class="xp-bar" style="width:100%;margin:10px 0">
+    <span class="xp-fill" style="width:{{ a.score }}%"></span>
+  </div>
+  {% if a.sparkline %}<div>{{ a.sparkline|safe }}</div>{% endif %}
+  {% if a.detail and a.detail.inputs %}
+  <div class="chips">
+    {% for i in a.detail.inputs %}<span class="chip">{{ i }}</span>{% endfor %}
+  </div>
+  {% endif %}
+</div>
+{% else %}
+<div class="card empty">No attribute data yet. Complete a day to compute.</div>
+{% endfor %}
+{% endblock %}

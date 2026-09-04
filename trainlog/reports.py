@@ -177,3 +177,88 @@ def auto_test_value(key):
                   " WHERE s.exercise_id=? AND s.completed=1 AND d.log_date>=?",
                   (m["auto_from_log"], since))
     return r["v"] if r else None
+
+
+# --- Phase E: momentum, near-wins, next-goal ---------------------------
+
+
+def _days_with_activity(start, end):
+    """Set of log_dates in [start, end] that 'count' for momentum: day
+    complete OR any completed set OR any completed anchor item (locked
+    definition - anchor-only days count equally)."""
+    rows = query(
+        "SELECT DISTINCT d.log_date FROM day_log d"
+        " LEFT JOIN set_log s ON s.day_log_id=d.id AND s.completed=1"
+        " LEFT JOIN anchor_log a ON a.day_log_id=d.id AND a.completed=1"
+        " WHERE d.log_date>=? AND d.log_date<=?"
+        " AND (d.day_complete=1 OR s.id IS NOT NULL OR a.id IS NOT NULL)",
+        (start, end))
+    return {r["log_date"] for r in rows}
+
+
+def momentum(date_str=None):
+    """Weekly momentum rollup (Phase E). Trailing 7 days ending at date_str
+    (default today). Target: any 5 of 7 days logged."""
+    end = date_str or datetime.date.today().isoformat()
+    end_d = datetime.date.fromisoformat(end)
+    start_d = end_d - datetime.timedelta(days=6)
+    active = _days_with_activity(start_d.isoformat(), end)
+    return {"days_logged": len(active), "target": 5,
+            "window": [start_d.isoformat(), end],
+            "hit": len(active) >= 5}
+
+
+def near_win(date_str):
+    """One concrete near-win, computed at render time (Phase E). Priority:
+    closest attribute level boundary, XP to next level, test metric within
+    5% of best, else the momentum fallback."""
+    # 1. attribute closest to next level
+    row = query_one(
+        "SELECT attribute, score, level FROM attribute_state"
+        " ORDER BY (score - (CAST(score AS INTEGER) / 10) * 10) DESC LIMIT 1")
+    if row and row["score"] > 0:
+        remainder = row["score"] % 10
+        if remainder > 0:
+            away = int(round(10 - remainder))
+            if away > 0:
+                return (f"{away} points from {row['attribute'].capitalize()}"
+                        f" level {row['level'] + 1}")
+    # 2. XP to next account level
+    from trainlog import xp as _xp
+    st = _xp.get_state()
+    need = st["xp_for_next_level"] - st["xp_into_level"]
+    if need > 0:
+        return f"{need} XP from level {st['level'] + 1}"
+    # 3. test metric within 5% of all-time best
+    for m in test_metrics():
+        hist = [h["value"] for h in m["history"] if h["value"] is not None]
+        if len(hist) < 2 or m["latest"] is None:
+            continue
+        best = min(hist) if m["direction"] == "down" else max(hist)
+        if best and abs(m["latest"] - best) / abs(best) <= 0.05:
+            if m["is_time"]:
+                return f"{_fmt_time(abs(m['latest']-best))} from your best {m['name']}"
+            return f"{abs(m['latest']-best):g} {m.get('unit') or ''} from your best {m['name']}".strip()
+    # 4. fallback
+    return "Log today to keep momentum alive"
+
+
+def next_goal(date_str):
+    """Post-workout next-goal line (Phase E, Task 24): the near-win plus,
+    when a progression event fired today, the engine's next-session target."""
+    base = near_win(date_str)
+    ev = query_one(
+        "SELECT e.last_recommendation_json rec FROM exercise_state e"
+        " JOIN progression_event p ON p.exercise_id=e.exercise_id"
+        " WHERE p.created_at LIKE ? ORDER BY p.id DESC LIMIT 1",
+        (date_str + "%",))
+    if ev and ev["rec"]:
+        import json as _json
+        try:
+            rec = _json.loads(ev["rec"])
+            tgt = rec.get("next_rep_target")
+            if tgt:
+                return f"{base} | Next: {rec.get('exercise_id', '')} - {tgt}"
+        except (ValueError, TypeError):
+            pass
+    return base

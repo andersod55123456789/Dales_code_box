@@ -12,8 +12,17 @@
   <a href="/day/today">Today</a>
   <a href="/checkin">Check-in{% if not checkin_done %}<span class="dot"></span>{% endif %}</a>
   <a href="/progress">Progress</a>
+  <a href="/character">Character</a>
+  <a href="/trophies">Trophies</a>
   <a href="/tests">Tests</a>
   <a href="/program">Program</a>
+  {% if xp %}
+  <span class="xp-widget" title="Level {{ xp.level }} - {{ xp.total_xp }} XP total">
+    <span class="xp-badge">Lv {{ xp.level }}</span>
+    <span class="xp-bar"><span class="xp-fill" style="width:{{ (100 * xp.xp_into_level / xp.xp_for_next_level)|round(0,'floor')|int if xp.xp_for_next_level else 0 }}%"></span></span>
+    <span class="xp-frac muted">{{ xp.xp_into_level }}/{{ xp.xp_for_next_level }}</span>
+  </span>
+  {% endif %}
 </nav>
 <main class="wrap">{% block content %}{% endblock %}</main>
 <div id="toast" class="toast" hidden></div>

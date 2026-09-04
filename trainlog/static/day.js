@@ -6,6 +6,32 @@ function toast(msg) {
   t._h = setTimeout(() => { t.hidden = true; }, 2600);
 }
 
+// Reward card (Phase B Task 15, reused by E & F). Dismisses on click.
+function reward_card(title, lines) {
+  const old = document.querySelector('.reward-card');
+  if (old) old.remove();
+  const c = document.createElement('div');
+  c.className = 'reward-card';
+  const h = document.createElement('h2');
+  h.textContent = title;
+  c.appendChild(h);
+  const ul = document.createElement('ul');
+  (lines || []).forEach(l => {
+    const li = document.createElement('li');
+    li.textContent = l;
+    ul.appendChild(li);
+  });
+  c.appendChild(ul);
+  const hint = document.createElement('span');
+  hint.className = 'muted';
+  hint.textContent = 'tap to dismiss';
+  c.appendChild(hint);
+  c.addEventListener('click', () => c.remove());
+  document.body.appendChild(c);
+  clearTimeout(c._h);
+  c._h = setTimeout(() => c.remove(), 6000);
+}
+
 async function post(url, body) {
   const r = await fetch(url, {
     method: 'POST',
@@ -163,8 +189,22 @@ if (dd) {
     try {
       const d = await post('/api/day/complete',
         {date: DAY_DATE, complete: !DAY_DONE});
-      toast(d.message);
-      setTimeout(() => location.reload(), 900);
+      // Phase B/E/F: show reward card for level-ups, achievements, next goal.
+      const lines = [];
+      if (d.xp_awarded) lines.push('+' + d.xp_awarded + ' XP');
+      if (d.breakdown) lines.push(...d.breakdown);
+      if (d.next_goal) lines.push('Next: ' + d.next_goal);
+      const ach = (d.achievements_unlocked || []);
+      if (d.leveled_up) {
+        reward_card('Level ' + d.new_level, lines);
+      } else if (ach.length) {
+        reward_card('Achievement: ' + ach.map(a => a.title).join(', '), lines);
+      } else if (d.xp_awarded || d.next_goal) {
+        reward_card('Day complete', lines);
+      } else {
+        toast(d.message);
+      }
+      setTimeout(() => location.reload(), 2200);
     } catch (e) {}
   });
 }

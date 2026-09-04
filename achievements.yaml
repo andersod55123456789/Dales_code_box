@@ -1,0 +1,31 @@
+# Achievement catalog (Phase F, Task 25). Static config - the unlock itself
+# is the reward; xp: 0 is a placeholder so tuning a future challenge-style
+# bonus is a data edit (rides XP_CHALLENGE in xp.py).
+first_pr:
+  title: "First PR"
+  xp: 0
+  condition: "Log your first personal record"
+first_load_increase:
+  title: "First Load Increase"
+  xp: 0
+  condition: "Earn your first engine load/difficulty increase"
+first_mesocycle:
+  title: "Mesocycle Complete"
+  xp: 0
+  condition: "Finish a full 12-session mesocycle on any exercise"
+momentum_3x:
+  title: "Three Perfect Weeks"
+  xp: 0
+  condition: "Hit the 5-of-7 momentum target in 3 distinct weeks"
+deload_3x:
+  title: "Survived 3 Deloads"
+  xp: 0
+  condition: "Complete a gating day in 3 different deload weeks"
+anchor_30:
+  title: "30-Day Anchor Streak"
+  xp: 0
+  condition: "Complete the full daily anchor 30 days in a row"
+guardrail_clean_week:
+  title: "All Clear"
+  xp: 0
+  condition: "A week with guardrail warnings, all resolved (none left pending)"
