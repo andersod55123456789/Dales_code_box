@@ -65,6 +65,20 @@ def dismiss_banner():
     return jsonify({"ok": True})
 
 
+def _garmin_activities(date):
+    """Group this day's metric_log garmin_* rows into per-activity dicts."""
+    rows = query(
+        "SELECT m.exercise_id, m.field_key, m.value_num, m.value_text"
+        " FROM metric_log m JOIN day_log d ON d.id=m.day_log_id"
+        " WHERE d.log_date=? AND m.exercise_id LIKE 'garmin_%'", (date,))
+    acts = {}
+    for r in rows:
+        a = acts.setdefault(r["exercise_id"], {"exercise_id": r["exercise_id"]})
+        a[r["field_key"]] = (r["value_text"] if r["value_text"] is not None
+                             else r["value_num"])
+    return sorted(acts.values(), key=lambda a: a.get("exercise_id", ""))
+
+
 def day_payload(date):
     day = logbook.get_day(date)
     if date == datetime.date.today().isoformat():
@@ -77,6 +91,7 @@ def day_payload(date):
     day["mission"] = mission_summary(date, day)
     day["near_win"] = reports.near_win(date)
     day["momentum"] = reports.momentum(date)
+    day["garmin_activities"] = _garmin_activities(date)
     return day
 
 
@@ -190,6 +205,11 @@ def day_complete():
     if complete:
         from trainlog import xp
         res.update(xp.award_day_complete(date))
+    else:
+        # Undo: reverse this day's XP immediately so totals drop on un-complete.
+        from trainlog import xp
+        from trainlog.logbook import get_or_create_day_log
+        xp.reverse_day_xp(get_or_create_day_log(date)["id"])
         # Phase E next-goal panel + Phase F achievement evaluation
         from trainlog.reports import next_goal
         res["next_goal"] = next_goal(date)
@@ -342,6 +362,45 @@ def post_tests():
     from trainlog.attributes import recompute_attributes
     recompute_attributes()
     return jsonify({"ok": True, "saved": n, "test_prs": prs})
+
+
+_GARMIN_SYNC = None
+
+
+def _garmin_sync_module():
+    """Load Garmin/sync_mounted_fit.py (lives outside the app package)."""
+    global _GARMIN_SYNC
+    if _GARMIN_SYNC is None:
+        import importlib.util
+        from pathlib import Path
+        garmin_dir = Path(config.__file__).resolve().parents[2] / "Garmin"
+        spec = importlib.util.spec_from_file_location(
+            "sync_mounted_fit", garmin_dir / "sync_mounted_fit.py")
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        _GARMIN_SYNC = mod
+    return _GARMIN_SYNC
+
+
+@bp.post("/garmin/sync")
+def garmin_sync():
+    """Import all new activities from the mounted watch into training.db."""
+    try:
+        mod = _garmin_sync_module()
+    except Exception as e:
+        return err(f"could not load Garmin sync module: {e}", 500)
+    watch = mod.DEFAULT_WATCH
+    if not watch.exists():
+        return err(f"watch not found at {watch} - plug it in and try again")
+    if not mod.fit_files(watch):
+        return err(f"no FIT files found under {watch}\\Activity")
+    try:
+        parsed, imported, skipped = mod.sync(
+            watch, config.DATABASE_PATH, dry_run=False, limit=None)
+    except Exception as e:
+        return err(f"sync failed: {e}", 500)
+    return jsonify({"ok": True, "parsed": parsed, "imported": imported,
+                    "skipped": skipped})
 
 
 @bp.get("/progress/strength")

@@ -91,7 +91,7 @@
     {% if a.note %}<p class="muted small">{{ a.note }}</p>{% endif %}
   </div>
   {% endfor %}
-  <button class="btn wide" onclick="anchorAll()">All six as prescribed</button>
+  <button class="btn wide" onclick="anchorAll()">All as prescribed</button>
 </div>
 
 {% if day.landings.count or day.weekday == 'tuesday' %}
@@ -130,20 +130,23 @@
     {% if ex.note %}<p class="muted small">{{ ex.note }}</p>{% endif %}
 
     {% for r in ex.set_rows %}
-    <div class="setrow" data-idx="{{ r.set_index }}" data-bo="{{ 1 if r.is_backoff else 0 }}">
-      <span class="lbl">{% if r.is_backoff %}BACK-OFF{% else %}SET {{ r.set_index }}{% endif %}</span>
+    <div class="setrow{% if r.is_warmup %} warmup{% endif %}" data-idx="{{ r.set_index }}" data-bo="{{ 1 if r.is_backoff else 0 }}">
+      <span class="lbl">{% if r.is_warmup %}WARMUP{% elif r.is_backoff %}BACK-OFF{% else %}SET {{ r.set_index }}{% endif %}</span>
       <label>reps <input class="reps" type="number" step="1"
         data-target="{{ r.target_reps if r.target_reps is not none else '' }}"
         value="{{ r.actual_reps if r.actual_reps is not none else (r.target_reps if r.target_reps is not none else '') }}"
-        {% if ex.skipped %}disabled{% endif %}></label>
+        {% if ex.skipped or r.is_warmup %}disabled{% endif %}></label>
       {% if r.is_backoff %}<span class="pill">AMRAP-2</span>{% endif %}
-      <label>lb <input class="load" type="number" step="0.5"
+      {% if r.is_warmup %}<span class="pill">50% &times; 1.5 reps</span>{% endif %}
+      <label>lb <input class="load" type="number" step="1"
         data-target="{{ r.target_load if r.target_load is not none else '' }}"
         value="{{ r.actual_load if r.actual_load is not none else (r.target_load if r.target_load is not none else '') }}"
-        {% if ex.skipped %}disabled{% endif %}></label>
+        {% if ex.skipped or r.is_warmup %}disabled{% endif %}></label>
+      {% if not r.is_warmup %}
       <label class="tick"><input type="checkbox" class="setdone"
         {% if r.completed %}checked{% endif %}
         {% if ex.skipped %}disabled{% endif %}><span></span></label>
+      {% endif %}
     </div>
     {% endfor %}
 
@@ -182,6 +185,25 @@
   {% endfor %}
 </div>
 
+{% if day.garmin_activities %}
+<div class="card">
+  <h2>Watch activity <span class="count">{{ day.garmin_activities|length }}</span></h2>
+  {% for g in day.garmin_activities %}
+  <div class="garmin-act">
+    <span class="nm">{{ g.activity_type or 'activity' }}</span>
+    <div class="chips">
+      {% if g.duration_minutes %}<span class="chip">{{ g.duration_minutes|round(1) }} min</span>{% endif %}
+      {% if g.distance_miles %}<span class="chip">{{ g.distance_miles|round(2) }} mi</span>{% endif %}
+      {% if g.avg_pace %}<span class="chip">{{ g.avg_pace }}</span>{% endif %}
+      {% if g.calories %}<span class="chip">{{ g.calories }} cal</span>{% endif %}
+      {% if g.avg_hr %}<span class="chip">HR {{ g.avg_hr }}{% if g.max_hr %}/{{ g.max_hr }}{% endif %}</span>{% endif %}
+      {% if g.ascent_meters %}<span class="chip">&#8593;{{ g.ascent_meters }} m</span>{% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
 {% if day.show_test_battery %}
 <div class="card banner"><span>Deload week &mdash; test battery due</span>
   <a class="btn" href="/tests">Go to tests</a></div>
@@ -201,8 +223,17 @@
   <span class="muted small" id="syncstatus"></span>
 </div>
 
-<div id="rest" class="rest" hidden><span id="restlbl"></span>
-  <button class="btn ghost small" onclick="stopTimer()">skip</button></div>
+<div id="restpanel" class="restpanel">
+  <div class="tctr">
+    <button class="btn primary" id="btnstart" onclick="startStopwatch()">START</button>
+    <button class="btn" id="btnstop" onclick="stopStopwatch()" disabled>STOP</button>
+  </div>
+  <div class="bigtime" id="sw">00:00:00</div>
+  <div id="rest" class="rest" hidden style="position:static;margin-top:14px;box-shadow:none">
+    <span id="restlbl"></span>
+    <button class="btn ghost small" onclick="stopTimer()">skip</button>
+  </div>
+</div>
 {% endblock %}
 {% block scripts %}
 <script>const DAY_DATE="{{ day.date }}", DAY_DONE={{ 'true' if day.day_complete else 'false' }};</script>

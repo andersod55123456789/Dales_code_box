@@ -16,6 +16,7 @@
   <a href="/trophies">Trophies</a>
   <a href="/tests">Tests</a>
   <a href="/program">Program</a>
+  <button type="button" id="garmin-sync-btn" title="Import activities from the plugged-in Garmin watch">Sync Watch</button>
   {% if xp %}
   <span class="xp-widget" title="Level {{ xp.level }} - {{ xp.total_xp }} XP total">
     <span class="xp-badge">Lv {{ xp.level }}</span>
@@ -26,6 +27,40 @@
 </nav>
 <main class="wrap">{% block content %}{% endblock %}</main>
 <div id="toast" class="toast" hidden></div>
+<script>
+(function () {
+  const btn = document.getElementById('garmin-sync-btn');
+  if (!btn) return;
+  function toast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.hidden = false;
+    clearTimeout(t._h);
+    t._h = setTimeout(() => { t.hidden = true; }, 3000);
+  }
+  btn.addEventListener('click', async () => {
+    btn.disabled = true;
+    const label = btn.textContent;
+    btn.textContent = 'Syncing...';
+    try {
+      const r = await fetch('/api/garmin/sync', { method: 'POST' });
+      const d = await r.json();
+      if (!d.ok) { toast(d.error || 'Sync failed'); return; }
+      if (d.imported > 0) {
+        toast(`Imported ${d.imported} activit${d.imported === 1 ? 'y' : 'ies'} from watch`);
+        setTimeout(() => location.reload(), 900);
+      } else {
+        toast('Watch synced - nothing new to import');
+      }
+    } catch (e) {
+      toast('Sync failed - server unreachable');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = label;
+    }
+  });
+})();
+</script>
 {% block scripts %}{% endblock %}
 </body>
 </html>
